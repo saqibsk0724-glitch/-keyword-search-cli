@@ -3,6 +3,7 @@ import json
 import string
 import os
 import pickle
+import math
 from nltk.stem import PorterStemmer
 from collections import Counter
 stemmer = PorterStemmer()
@@ -143,6 +144,9 @@ def main() -> None:
     tf_parser.add_argument("doc_id" , type=int)
     tf_parser.add_argument("term" , type=str)
 
+    idf_parser = subparsers.add_parser("idf" , help="Get inverse document frequency")
+    idf_parser.add_argument("term" , type=str)
+
     args = parser.parse_args()
 
   
@@ -186,8 +190,19 @@ def main() -> None:
                     break
 
             for doc_id in results:
-                movie = index.docmap[doc_id]
+                movie = index.docmap[doc_id]    
                 print(f"{movie['title']} ({doc_id})")
+
+        case "idf":
+            index = InvertedIndex()
+            index.load()
+
+            term = tokenize_term(args.term)
+            df = len(index.get_document(term))
+            idf = math.log(len(index.docmap) / (df+1))
+
+            print(f"Inverse document frequency of '{args.term}': {idf:.2f}")
+
 
         case "tf":
             index = InvertedIndex()
