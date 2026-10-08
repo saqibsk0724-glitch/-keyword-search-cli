@@ -2,12 +2,23 @@ import argparse
 import json
 import string
 
-def matches(query , title):
+def matches(query , title , stopwords):
     translator = str.maketrans("" , "" , string.punctuation)
     query = query.lower().translate(translator)
     title = title.lower().translate(translator)
-    query_tokens = query.split()
-    title_tokens = title.split()
+
+
+    query_tokens = [
+        token for token in query.split()
+        if token not in stopwords
+    ]
+
+    title_tokens = [
+            token for token in title.split()
+            if token not in stopwords
+        ]
+
+   
 
     for query_token in query_tokens:
         for title_token in title_tokens:
@@ -26,6 +37,16 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    with open("data/stopwords.txt" , "r") as f:
+        stopwords = f.read().splitlines()
+
+    translator = str.maketrans("" , "" , string.punctuation)
+
+    stopwords = [
+        word.lower() .translate(translator)
+        for word in stopwords
+    ]
+
     match args.command:
         case "search":
             with open("data/movies.json" , "r") as f:
@@ -33,7 +54,7 @@ def main() -> None:
             
             results = []
             for movie in data["movies"]:
-                if matches(args.query , movie["title"]):
+                if matches(args.query , movie["title"] , stopwords):
                     results.append(movie)
                 
             print(f"Searching for: {args.query}")
