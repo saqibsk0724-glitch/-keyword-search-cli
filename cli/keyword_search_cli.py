@@ -4,6 +4,7 @@ import string
 import os
 import pickle
 from nltk.stem import PorterStemmer
+from collections import Counter
 stemmer = PorterStemmer()
 
 
@@ -36,15 +37,22 @@ class InvertedIndex:
     def __init__(self):
         self.index = {}
         self.docmap = {}
+        self.term_frequencies = {}
 
     def __add_document(self , doc_id , text):
         tokens = tokenize_text(text)
+
+        self.term_frequencies[doc_id] = Counter()
 
         for token in tokens:
             if token not in self.index:
                 self.index[token] = set()
 
             self.index[token].add(doc_id)
+            self.term_frequencies[doc_id][token] += 1
+
+    def get_tf(self , doc_id , term):
+        return self.term_frequencies[doc_id].get(term , 0)
 
     def get_document(self , term):
             return sorted(self.index.get(term , set()))
@@ -66,13 +74,27 @@ class InvertedIndex:
 
         with open("cache/docmap.pkl" , "wb") as f:
             pickle.dump(self.docmap , f)
+        
+        with open("cache/term_frequencies.pkl" , "wb") as f:
+            pickle.dump(self.term_frequencies , f)
 
     def load(self):
         with open("cache/index.pkl" , "rb") as f:
             self.index = pickle.load(f)
         with open("cache/docmap.pkl" , "rb") as f:
             self.docmap = pickle.load(f)
-    
+        with open("cache/term_frequencies.pkl" , "rb") as f:
+            self.term_frequencies = pickle.load(f)
+
+def tokenize_term(term):
+    tokens = tokenize_text(term)
+    if len(tokens) != 1:
+        raise Exception("Term must contain exactly one token")
+    return tokens[0]
+
+
+
+
             
 def matches(query , title , stopwords , stemmer):
     translator = str.maketrans("" , "" , string.punctuation)
@@ -116,7 +138,14 @@ def main() -> None:
 
     subparsers.add_parser("build" , help="Build the inverted text")
 
+
+    tf_parser = subparsers.add_parser("tf" , help="Get term frequency")
+    tf_parser.add_argument("doc_id" , type=int)
+    tf_parser.add_argument("term" , type=str)
+
     args = parser.parse_args()
+
+  
 
     with open("data/stopwords.txt" , "r") as f:
         stopwords = f.read().splitlines()
@@ -159,6 +188,18 @@ def main() -> None:
             for doc_id in results:
                 movie = index.docmap[doc_id]
                 print(f"{movie['title']} ({doc_id})")
+
+        case "tf":
+            index = InvertedIndex()
+            try:
+                index.load()
+            except FileNotFoundError:
+                print("Index not found. Please run the build command first")
+                return 
+            term = tokenize_term(args.term)
+            frequency = index.get_tf(args.doc_id , term)
+
+            print(frequency)
 
         case "build":
             build_command()
