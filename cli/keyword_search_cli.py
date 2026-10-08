@@ -46,7 +46,7 @@ class InvertedIndex:
 
             self.index[token].add(doc_id)
 
-    def get_documents(self , term):
+    def get_document(self , term):
             return sorted(self.index.get(term , set()))
 
     def build(self):
@@ -66,6 +66,13 @@ class InvertedIndex:
 
         with open("cache/docmap.pkl" , "wb") as f:
             pickle.dump(self.docmap , f)
+
+    def load(self):
+        with open("cache/index.pkl" , "rb") as f:
+            self.index = pickle.load(f)
+        with open("cache/docmap.pkl" , "rb") as f:
+            self.docmap = pickle.load(f)
+    
             
 def matches(query , title , stopwords , stemmer):
     translator = str.maketrans("" , "" , string.punctuation)
@@ -97,8 +104,7 @@ def build_command():
     index = InvertedIndex()
     index.build()
     index.save()
-    docs = index.get_documents("merida")
-    print(f"First document for token 'merida' ={docs[0]}")
+   
 
 
 def main() -> None:
@@ -124,18 +130,35 @@ def main() -> None:
 
     match args.command:
         case "search":
-            with open("data/movies.json" , "r") as f:
-                data = json.load(f)
+            index = InvertedIndex()
+
+            try:
+                index.load()
+            except FileNotFoundError:
+                print("Index not found. Please run the build command first.")
+                return
+
+           
             
+           
+            query_tokens = tokenize_text(args.query)
+           
             results = []
-            for movie in data["movies"]:
-                if matches(args.query , movie["title"] , stopwords , stemmer):
-                    results.append(movie)
-                
-            print(f"Searching for: {args.query}")
-            for i , movie in enumerate(results[:5] , start=1):
-                print(f"{i}. {movie['title']} ")
-            pass
+
+            for token in query_tokens:
+                docs = index.get_document(token)
+
+                for doc_id in docs:
+                    if doc_id not in results:
+                        results.append(doc_id)
+                    if len(results) == 5:
+                       break
+                if(len(results) == 5):
+                    break
+
+            for doc_id in results:
+                movie = index.docmap[doc_id]
+                print(f"{movie['title']} ({doc_id})")
 
         case "build":
             build_command()
