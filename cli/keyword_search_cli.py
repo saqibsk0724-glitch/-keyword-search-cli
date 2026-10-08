@@ -2,6 +2,20 @@ import argparse
 import json
 import string
 
+def matches(query , title):
+    translator = str.maketrans("" , "" , string.punctuation)
+    query = query.lower().translate(translator)
+    title = title.lower().translate(translator)
+    query_tokens = query.split()
+    title_tokens = title.split()
+
+    for query_token in query_tokens:
+        for title_token in title_tokens:
+            if query_token in title_token:
+                return True
+    return False
+
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
@@ -16,13 +30,12 @@ def main() -> None:
         case "search":
             with open("data/movies.json" , "r") as f:
                 data = json.load(f)
-            translator = str.maketrans("" , "" , string.punctuation)
-            query = args.query.lower().translate(translator)
+            
             results = []
             for movie in data["movies"]:
-                title = movie["title"].lower().translate(translator)
-                if query in title:
+                if matches(args.query , movie["title"]):
                     results.append(movie)
+                
             print(f"Searching for: {args.query}")
             for i , movie in enumerate(results[:5] , start=1):
                 print(f"{i}. {movie['title']} ")
