@@ -1,20 +1,24 @@
 import argparse
 import json
 import string
+from nltk.stem import PorterStemmer
+stemmer = PorterStemmer()
 
-def matches(query , title , stopwords):
+def matches(query , title , stopwords , stemmer):
     translator = str.maketrans("" , "" , string.punctuation)
     query = query.lower().translate(translator)
     title = title.lower().translate(translator)
 
 
     query_tokens = [
-        token for token in query.split()
+        stemmer.stem(token)
+        for token in query.split()
         if token not in stopwords
     ]
 
     title_tokens = [
-            token for token in title.split()
+            stemmer.stem(token)
+             for token in title.split()
             if token not in stopwords
         ]
 
@@ -54,7 +58,7 @@ def main() -> None:
             
             results = []
             for movie in data["movies"]:
-                if matches(args.query , movie["title"] , stopwords):
+                if matches(args.query , movie["title"] , stopwords , stemmer):
                     results.append(movie)
                 
             print(f"Searching for: {args.query}")
