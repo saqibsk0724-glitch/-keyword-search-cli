@@ -87,6 +87,11 @@ class InvertedIndex:
         with open("cache/term_frequencies.pkl" , "rb") as f:
             self.term_frequencies = pickle.load(f)
 
+    def get_bm25_idf(self , term: str) -> float:
+        N = len(self.docmap)
+        df = len(self.get_document(term))
+        return math.log((N - df + 0.5) / (df + 0.5) + 1)
+
 def tokenize_term(term):
     tokens = tokenize_text(term)
     if len(tokens) != 1:
@@ -127,7 +132,13 @@ def build_command():
     index = InvertedIndex()
     index.build()
     index.save()
-   
+
+def bm25_idf_command(term):
+    index = InvertedIndex()
+    index.load()
+
+    term = tokenize_term(term)
+    return index.get_bm25_idf(term)
 
 
 def main() -> None:
@@ -151,6 +162,14 @@ def main() -> None:
     tfidf_parser.add_argument("doc_id" , type=int)
     tfidf_parser.add_argument("term" , type=str)
 
+
+    bm25_idf_parser = subparsers.add_parser(
+        "bm25idf" , help="Get BM25 IDF score for a given term"
+    )
+
+    bm25_idf_parser.add_argument(
+        "term" , type=str , help="Term to get BM25 IDF score for"
+    )
     args = parser.parse_args()
 
   
@@ -232,6 +251,11 @@ def main() -> None:
             tf_idf = tf * idf
 
             print(f"TF-IDF score of '{args.term}' in document '{args.doc_id}' : {tf_idf:.2f}")
+
+        case "bm25idf":
+            bm25idf = bm25_idf_command(args.term)
+            print(f"BM25 IDF score of '{args.term}' : {bm25idf:.2f}")
+
 
         case "build":
             build_command()
