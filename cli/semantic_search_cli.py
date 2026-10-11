@@ -48,6 +48,12 @@ def main() -> None:
         default=200,
         help="Number of words per chunk"
     )
+    chunk_parser.add_argument(
+        "--overlap",
+        type=int,
+        default=0,
+        help="Number of words shared between chunks"
+    )
 
 
     args = parser.parse_args()
@@ -83,14 +89,22 @@ def main() -> None:
         case "chunk":
             words = args.text.split()
             chunk_size = args.chunk_size
+            overlap = args.overlap
 
             if chunk_size <= 0:
-                raise ValueError("Chunk size must be positive")
+                raise ValueError("chunk size must be positive")
 
-            chunks = [
-                " ".join(words[i: i + chunk_size])
-                for i in range(0 , len(words) , chunk_size)
-            ]
+            if overlap < 0 or overlap >= chunk_size:
+                raise ValueError("Overlap must be non-negative and smaller than chunk size")
+
+            chunks = []
+            start = 0
+            
+            while start < len(words):
+                chunk_words = words[start:start + chunk_size]
+                chunks.append(" ".join(chunk_words))
+                start += chunk_size - overlap 
+
 
             print(f"Chunking {len(args.text)} characters")
 
