@@ -22,6 +22,9 @@ def hybrid_score (bm25_score : float , semantic_score : float , alpha : float) -
     return alpha * bm25_score + (1 - alpha) * semantic_score
 
 
+def rrf_score(rank : int , k : int) -> float:
+    return 1 / (k + rank)
+
 
 class HybridSearch:
     def __init__(self , documents : list[dict]) -> None:
@@ -93,32 +96,117 @@ class HybridSearch:
             combined[doc_id]["semantic_score"] = score
         results = []
 
-        for doc_id , item in combined.items():
+        for doc_id, item in combined.items():
+            doc = item["document"]
             keyword_score = item["keyword_score"]
             semantic_score = item["semantic_score"]
-            doc = item["document"]
 
             results.append({
-                "id" : doc_id,
-                "title" : doc["title"],
-                "document" : (
-                    doc.get("document") or
-                        doc.get("description" , "")
+                "id": doc_id,
+                "title": doc["title"],
+                "document": (
+                    doc.get("document")
+                    or doc.get("description", "")
                 ),
-                "keyword_score" : keyword_score,
+                "keyword_score": keyword_score,
                 "semantic_score": semantic_score,
-                "hybrid_score" : hybrid_score(
-                    keyword_score , semantic_score , alpha
+                "hybrid_score": hybrid_score(
+                    keyword_score, semantic_score, alpha
                 ),
-                })
+            })
 
         results.sort(
-            key=lambda result : result["hybrid_score"],
-            reverse=True
+            key=lambda result: result["hybrid_score"],
+            reverse=True,
         )
         return results[:limit]
 
 
 
-    def rrf_search(self  , query : str , k : int , limit : int  = 10) -> list[dict]:
-        raise NotImplementedError("RRF hybrid search not implemented yet")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        #=================================================================================
+
+    
+    def rrf_search(
+        self, query: str, k: int = 60, limit: int = 5
+    ) -> list[dict]:
+        fetch_limit = 500 * limit
+
+        keyword_results = self._bm25_search(query, fetch_limit)
+        semantic_results = self.semantic_search.search_chunks(
+            query, fetch_limit
+        )
+
+        combined = {}
+
+        for rank, result in enumerate(keyword_results, start=1):
+            doc_id = result["id"]
+
+            combined.setdefault(doc_id, {
+                "document": result,
+                "bm25_rank": None,
+                "semantic_rank": None,
+                "rrf_score": 0.0,
+            })
+
+            combined[doc_id]["document"] = result
+            combined[doc_id]["bm25_rank"] = rank
+            combined[doc_id]["rrf_score"] += rrf_score(rank, k)
+
+        for rank, result in enumerate(semantic_results, start=1):
+            doc_id = result["id"]
+
+            combined.setdefault(doc_id, {
+                "document": result,
+                "bm25_rank": None,
+                "semantic_rank": None,
+                "rrf_score": 0.0,
+            })
+
+            if combined[doc_id]["bm25_rank"] is None:
+                combined[doc_id]["document"] = result
+
+            combined[doc_id]["semantic_rank"] = rank
+            combined[doc_id]["rrf_score"] += rrf_score(rank, k)
+
+        results = []
+
+        for doc_id, item in combined.items():
+            doc = item["document"]
+
+            results.append({
+                "id": doc_id,
+                "title": doc["title"],
+                "document": (
+                    doc.get("document")
+                    or doc.get("description", "")
+                ),
+                "bm25_rank": item["bm25_rank"],
+                "semantic_rank": item["semantic_rank"],
+                "rrf_score": item["rrf_score"],
+            })
+
+        results.sort(
+            key=lambda result: result["rrf_score"],
+            reverse=True,
+        )
+
+        return results[:limit]

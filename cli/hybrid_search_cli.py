@@ -48,6 +48,17 @@ def main() -> None:
     weighted_parser.add_argument("--alpha" , type=float , default=0.5)
     weighted_parser.add_argument("--limit" , type=int , default=5)
 
+    rrf_parser = subparsers.add_parser(
+        "rrf-search",
+        help="Search using Reciprocal Rank Fusion"
+    )
+
+    rrf_parser.add_argument("query" , help="search query")
+    rrf_parser.add_argument("-k" , type=int , default=60)
+    rrf_parser.add_argument("--limit" , type=int , default=5)
+
+
+
     args = parser.parse_args()
 
     match args.command:
@@ -80,6 +91,33 @@ def main() -> None:
                 )
                 print(f" {result['document'][:100]}...")
 
+        case "rrf-search":
+            with open("data/movies.json", "r", encoding="utf-8") as file:
+                documents = json.load(file)["movies"]
+
+            hybrid = HybridSearch(documents)
+            results = hybrid.rrf_search(
+                args.query,
+                args.k,
+                args.limit,
+        )
+
+            for i, result in enumerate(results[:args.limit], start=1):
+                print(f"{i}. {result['title']}")
+                print(f"  RRF Score: {result['rrf_score']:.3f}")
+
+                bm25_rank = result["bm25_rank"]
+                semantic_rank = result["semantic_rank"]
+
+                print(
+                    f"  BM25 Rank: {bm25_rank}, "
+                    f"Semantic Rank: {semantic_rank}"
+                )
+                print(f"  {result['document'][:100]}...")
+                print()
+
+
+
         case _:
             parser.print_help()
 
@@ -87,3 +125,11 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+        
+        
