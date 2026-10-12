@@ -164,7 +164,7 @@ class ChunkedSemanticSearch(SemanticSearch):
         query_embedding =  self.generate_embedding(query)
         chunk_scores = []
 
-        
+
 
         for i , embedding in enumerate(self.chunk_embeddings):
             score = cosine_similarity(embedding ,  query_embedding)
@@ -260,7 +260,7 @@ def semantic_chunk_text(text : str , max_chunk_size : int = 4 , overlap: int = 1
         raise ValueError("Overlap must be non-negative and smaller than max chunk size")
 
     text = text.strip()
-    
+
 
     if not text:
         return []
@@ -276,10 +276,10 @@ def semantic_chunk_text(text : str , max_chunk_size : int = 4 , overlap: int = 1
     while start < len(sentences):
         chunk_sentences = sentences[start : start + max_chunk_size]
         chunk = " ".join(sentence for sentence in chunk_sentences if sentence)
-        
+
         if chunk.strip():
             chunks.append(chunk)
-        
+
         if start + max_chunk_size >= len(sentences):
             break
         start += max_chunk_size - overlap
